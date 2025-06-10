@@ -1,11 +1,11 @@
 package com.example.lab12
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.unit.dp
 import com.example.lab12.R
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.*
@@ -13,18 +13,25 @@ import com.google.maps.android.compose.*
 
 @Composable
 fun MapScreen() {
-    // Ubicaciones
+    // Posiciones
     val arequipa = LatLng(-16.4040102, -71.559611)
     val ciudadCercana = LatLng(-16.389, -71.530)
     val otraPosicion = LatLng(-16.370, -71.580)
     val yura = LatLng(-16.2520984, -71.6836503)
-
-    val cameraPositionState = rememberCameraPositionState()
-
-    // Ruta con múltiples paradas
     val routePoints = listOf(arequipa, ciudadCercana, otraPosicion, yura)
 
-    // Animar cámara hacia Yura
+    // Estado de la cámara
+    val cameraPositionState = rememberCameraPositionState()
+
+    // Estado para tipo de mapa
+    var mapType by remember { mutableStateOf(MapType.NORMAL) }
+
+    // Opciones de tipo de mapa
+    val mapTypes = listOf("Normal", "Hybrid", "Terrain", "Satellite")
+    var expanded by remember { mutableStateOf(false) }
+    var selectedMapType by remember { mutableStateOf("Normal") }
+
+    // Animar la cámara hacia Yura al iniciar
     LaunchedEffect(Unit) {
         cameraPositionState.animate(
             update = CameraUpdateFactory.newLatLngZoom(yura, 12f),
@@ -32,10 +39,41 @@ fun MapScreen() {
         )
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize()) {
+        // 🔽 Menú desplegable para elegir el tipo de mapa
+        Box(modifier = Modifier.padding(16.dp)) {
+            OutlinedButton(onClick = { expanded = true }) {
+                Text("Tipo de mapa: $selectedMapType")
+            }
+
+            DropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                mapTypes.forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(type) },
+                        onClick = {
+                            selectedMapType = type
+                            mapType = when (type) {
+                                "Normal" -> MapType.NORMAL
+                                "Hybrid" -> MapType.HYBRID
+                                "Terrain" -> MapType.TERRAIN
+                                "Satellite" -> MapType.SATELLITE
+                                else -> MapType.NORMAL
+                            }
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // 🗺️ Mapa con marcadores, rutas, polígonos y tipo de mapa dinámico
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState
+            cameraPositionState = cameraPositionState,
+            properties = MapProperties(mapType = mapType)
         ) {
             // Marcadores
             Marker(
@@ -47,14 +85,14 @@ fun MapScreen() {
             Marker(state = rememberMarkerState(position = otraPosicion), title = "Otra posición")
             Marker(state = rememberMarkerState(position = yura), title = "Yura")
 
-            //Ruta directa Arequipa - Yura (verde)
+            // Polilínea directa (verde)
             Polyline(
                 points = listOf(arequipa, yura),
                 color = Color.Green,
                 width = 8f
             )
 
-            //Ruta con múltiples paradas (azul)
+            // Ruta con múltiples paradas (azul)
             Polyline(
                 points = routePoints,
                 color = Color.Blue,
